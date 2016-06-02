@@ -3,8 +3,11 @@
    Copyright (c) 2016 David Johnson-Davies
    
    Licensed under the MIT license: https://opensource.org/licenses/MIT
-*/
 
+   (i2c-begin 30)
+   (i2c-write 32)
+*/
+#include <Wire.h>
 #include <setjmp.h>
 
 // Compile options
@@ -61,7 +64,8 @@ REST, CAAR, CADR, SECOND, CDAR, CDDR, CAAAR, CAADR, CADAR, CADDR, THIRD, CDAAR, 
 LIST, REVERSE, NTH, ASSOC, MEMBER, APPLY, FUNCALL, APPEND, MAPC, MAPCAR, ADD, SUBTRACT, MULTIPLY, DIVIDE, MOD,
 ONEPLUS, ONEMINUS, ABS, RANDOM, MAX, MIN, NUMEQ, LESS, LESSEQ, GREATER, GREATEREQ, NOTEQ, PLUSP, MINUSP, ZEROP,
 ODDP, EVENP, READ, EVAL, LOCALS, GLOBALS, MAKUNBOUND, BREAK, PRINT, PRINC, GC, PINMODE, DIGITALREAD, DIGITALWRITE,
-ANALOGREAD, ANALOGWRITE, DELAY, MILLIS, SHIFTOUT, SHIFTIN, NOTE, ENDFUNCTIONS };
+ANALOGREAD, ANALOGWRITE, DELAY, MILLIS, SHIFTOUT, SHIFTIN, NOTE, I2C_BEGIN, I2C_END, I2C_READ, I2C_WRITE, I2C_REQUEST,
+ENDFUNCTIONS };
 
 // Typedefs
 
@@ -1331,6 +1335,45 @@ object *fn_note (object *args, object *env) {
 
 // Insert your own function definitions here
 
+object *fn_i2c_begin(object*args,object*env)
+{
+  (void) env;
+  Wire.beginTransmission(integer(first(args)));
+  return nil;
+}
+
+object *fn_i2c_end(object*args,object*env)
+{
+  (void) env;
+  (void) args;
+  Wire.endTransmission();
+  return nil;
+}
+
+object *fn_i2c_write(object*args,object*env)
+{
+  (void) env;
+  Wire.write(byte(integer(first(args))));
+  return nil;
+}
+
+object *fn_i2c_request(object*args,object*env)
+{
+  (void) env;
+  int addr = integer(first(args));
+  int quantity = integer(second(args));
+  int stp = integer(third(args));
+  
+  int value = Wire.requestFrom(addr,quantity,stp);
+  return number(value);
+}
+
+object *fn_i2c_read(object*args,object*env)
+{
+  (void) env;
+  (void) args;
+  return number(Wire.read());
+}
 
 // Built-in procedure names - stored in PROGMEM
 
@@ -1446,6 +1489,13 @@ const char string108[] PROGMEM = "millis";
 const char string109[] PROGMEM = "shiftout";
 const char string110[] PROGMEM = "shiftin";
 const char string111[] PROGMEM = "note";
+const char string112[] PROGMEM = "i2c-begin";
+const char string113[] PROGMEM = "i2c-end";
+const char string114[] PROGMEM = "i2c-read";
+const char string115[] PROGMEM = "i2c-write";
+const char string116[] PROGMEM = "i2c-request";
+
+
 
 const tbl_entry_t lookup_table[] PROGMEM = {
   { string0, NULL, NIL, NIL },
@@ -1560,6 +1610,12 @@ const tbl_entry_t lookup_table[] PROGMEM = {
   { string109, fn_shiftout, 4, 4 },
   { string110, fn_shiftin, 3, 3 },
   { string111, fn_note, 0, 3 },
+  { string112, fn_i2c_begin, 1, 1},
+  { string113, fn_i2c_end, 0, 0},
+  { string114, fn_i2c_read, 0, 0},
+  { string115, fn_i2c_write, 1, 1},
+  { string116, fn_i2c_request, 3, 3},
+
 };
 
 // Table lookup functions
@@ -1836,6 +1892,7 @@ void initenv() {
 
 void setup() {
   Serial.begin(9600);
+  Wire.begin();
   while (!Serial);  // wait for Serial to initialize
   initworkspace();
   initenv();
